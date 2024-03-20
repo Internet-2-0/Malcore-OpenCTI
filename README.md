@@ -161,3 +161,7 @@ INFO:root:Listing Threat-Actors with filters null.
 INFO:root:Connector registered with ID: a2de809c-fbb9-491d-90c0-96c7d1766000
 INFO:root:Starting ping alive thread
 ```
+
+## To develop
+
+Clone the dev branch and make a PR
