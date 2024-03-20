@@ -1,6 +1,6 @@
 opencti:
   url: 'http://localhost:4000'
-  token: '21ac902a-32af-4044-ad67-cd1deb895657'
+  token: '21ac902a-32af-4044-ad67-cd1deb895657' # OpenCTI API Key
 
 connector:
   id: '9cc7f467-af8d-41c5-b024-73414dfbcd3f' # Valid UUIDv4
@@ -11,8 +11,8 @@ connector:
   log_level: 'info'
 
 malcore:
-  api_url: 'http://localhost:5000/api/feed' # 'https://api.malcore.io/api/feed'
-  api_key: 'b15ee002b72f32fa3b46712044fb9ceced086fe0' # '92acf394238c93717f9bc4ad671ef7e63518fd1f'
+  api_url: 'https://api.malcore.io/api/feed'
+  api_key: 'xxxx002b72f32fa3b46712044fb9ceced086fe0' # Malcore API Key
   score: 100
   limit: 1000
   interval: 1 # In days, must be strictly greater than 1

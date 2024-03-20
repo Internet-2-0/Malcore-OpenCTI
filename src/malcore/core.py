@@ -112,10 +112,8 @@ class Malcore:
                 if("file_exif_data" in item_data):
                 
                     hashes = item_data["hashes"]
-                    # yara_rule = item_data["yara_rule"]
                     upload_time = item_data["upload_time"]
                     file_exif_data = item_data["file_exif_data"]
-                    file_description = file_exif_data['file_information']['file_description']
                     file_extension = file_exif_data['file_information']['file_extension']
                     mime_type = file_exif_data['mime_type']
                     file_size = item_data['file_sizes']['raw_byte_size']
