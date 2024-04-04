@@ -78,6 +78,7 @@ class Malcore:
             feed_type = "ioc"
             req = urllib.request.Request(self.api_url)
             req.add_header("apikey", self.api_key)
+            req.add_header("User-Agent", "Malcore/OpenCTI")
             req.add_header("Accept", "application/json")
             req.method = "POST"
             body = parse.urlencode(
@@ -168,6 +169,7 @@ class Malcore:
             feed_type = "threat"
             req = urllib.request.Request(self.api_url)
             req.add_header("apikey", self.api_key)
+            req.add_header("User-Agent", "Malcore/OpenCTI")
             req.add_header("Accept", "application/json")
             req.method = "POST"
             body = parse.urlencode(
@@ -279,6 +281,7 @@ class Malcore:
             feed_type = "hash" 
             req = urllib.request.Request(self.api_url)
             req.add_header("apikey", self.api_key)
+            req.add_header("User-Agent", "Malcore/OpenCTI")
             req.add_header("Accept", "application/json")
             req.method = "POST"
             body = parse.urlencode(
