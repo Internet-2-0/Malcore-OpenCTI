@@ -377,8 +377,6 @@ class Malcore:
                     last_run = None
                     self.helper.log_info("Connector has never run")
 
-                last_run = None
-
                 # If the last_run is more than interval hour
                 if last_run is None or (
                     (timestamp - last_run) > (int(self.interval) * 60 * 60)
@@ -386,7 +384,7 @@ class Malcore:
                     # Initiate the run
                     self.helper.log_info("Connector will run!")
 
-                    # # Run for feed type ioc
+                    # Run for feed type ioc
                     self.run_feed_ioc(timestamp)
 
                     # Run for feed type threat
