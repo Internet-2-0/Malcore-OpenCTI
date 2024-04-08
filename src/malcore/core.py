@@ -57,16 +57,15 @@ class Malcore:
         self.identity = self.helper.api.identity.create(
             type="Organization",
             name="Malcore",
-            description="Malcore is a project dedicated to helping combat the spread of hackers, spammers, and abusive activity on the internet",
+            description="Malcore is a project dedicated to helping combat the spread of hackers, spammers, "
+            "and abusive activity on the internet",
         )
 
-
     def get_interval(self):
-        return int(self.interval) * 60 * 60 * 24 
-    
-    
+        return int(self.interval) * 60 * 60
+
     def run_feed_ioc(self, timestamp):
-        try: 
+        try:
             now = datetime.utcfromtimestamp(timestamp)
             friendly_name = "Malcore connector ioc run @ " + now.strftime(
                 "%Y-%m-%d %H:%M:%S"
@@ -74,12 +73,12 @@ class Malcore:
             work_id = self.helper.api.work.initiate_work(
                 self.helper.connect_id, friendly_name
             )
-            
+
             feed_type = "ioc"
             req = urllib.request.Request(self.api_url)
             req.add_header("apikey", self.api_key)
-            req.add_header("User-Agent", "Malcore/OpenCTI")
             req.add_header("Accept", "application/json")
+            req.add_header("User-Agent", "Malcore/OpenCTI")
             req.method = "POST"
             body = parse.urlencode(
                 {
@@ -95,69 +94,68 @@ class Malcore:
             feed = response.read()
             data_json = json.loads(feed)
 
+            malcore_org_id = Identity.generate_id("Malcore", "organization")
             identity = stix2.Identity(
-                id=Identity.generate_id("Malcore", "organization"),
+                id=malcore_org_id,
                 name="Malcore",
                 identity_class="organization",
             )
 
             # preparing the bundle to be sent to OpenCTI worker
+            bundle_objects = []
             file_objects = []
 
             # Filling the bundle
-            for item in data_json['data']['data']:
-                
+            for item in data_json["data"]["data"]:
                 key = next(iter(item))
                 item_data = item[key]
-                
-                if("file_exif_data" in item_data):
-                
+
+                if "file_exif_data" in item_data:
                     hashes = item_data["hashes"]
                     upload_time = item_data["upload_time"]
                     file_exif_data = item_data["file_exif_data"]
-                    file_extension = file_exif_data['file_information']['file_extension']
-                    mime_type = file_exif_data['mime_type']
-                    file_size = item_data['file_sizes']['raw_byte_size']
-                    hashmd5 = hashes["md5"] 
-                    
+                    file_extension = file_exif_data["file_information"][
+                        "file_extension"
+                    ]
+                    mime_type = file_exif_data["mime_type"]
+                    file_size = item_data["file_sizes"]["raw_byte_size"]
+                    hashmd5 = hashes["md5"]
+
                     stix_file = stix2.File(
-                        name=upload_time+file_extension,
+                        name=upload_time + file_extension,
                         hashes={
-                            "MD5": hashmd5,    
-                            "SHA-1": hashes["sha1"],    
-                            "SHA-256": hashes["sha256"],    
+                            "MD5": hashmd5,
+                            "SHA-1": hashes["sha1"],
+                            "SHA-256": hashes["sha256"],
                         },
                         size=file_size,
                         mime_type=mime_type,
                     )
                     file_objects.append(stix_file)
 
+            bundle_objects.append(identity)
+            bundle_objects.extend(file_objects)
             # Creating the bundle from the list
-            bundle = stix2.Bundle(
-                objects=[identity] + file_objects
-            ) 
+            bundle = stix2.Bundle(objects=bundle_objects, allow_custom=True)
             bundle_json = bundle.serialize()
-            
+
             # Sending the bundle
             self.helper.send_stix2_bundle(
                 bundle_json,
                 update=self.update_existing_data,
                 work_id=work_id,
             )
-            
-            message = "IOC successfully run, storing last_run as " + str(
-                timestamp
-            )
+
+            message = "IOC successfully run, storing last_run as " + str(timestamp)
             self.helper.log_info(message)
             self.helper.set_state({"last_run": timestamp})
             self.helper.api.work.to_processed(work_id, message)
-            
+
         except Exception as e:
-            self.helper.log_error(str(e))
-            
+            self.helper.log_error("IOC::"+str(e))
 
     def run_feed_threat(self, timestamp):
-        try: 
+        try:
             now = datetime.utcfromtimestamp(timestamp)
             friendly_name = "Malcore connector threat run @ " + now.strftime(
                 "%Y-%m-%d %H:%M:%S"
@@ -165,12 +163,12 @@ class Malcore:
             work_id = self.helper.api.work.initiate_work(
                 self.helper.connect_id, friendly_name
             )
-            
+
             feed_type = "threat"
             req = urllib.request.Request(self.api_url)
             req.add_header("apikey", self.api_key)
-            req.add_header("User-Agent", "Malcore/OpenCTI")
             req.add_header("Accept", "application/json")
+            req.add_header("User-Agent", "Malcore/OpenCTI")
             req.method = "POST"
             body = parse.urlencode(
                 {
@@ -186,13 +184,16 @@ class Malcore:
             feed = response.read()
             data_json = json.loads(feed)
 
+            malcore_org_id = Identity.generate_id("Malcore", "organization")
             identity = stix2.Identity(
-                id=Identity.generate_id("Malcore", "organization"),
+                id=malcore_org_id,
                 name="Malcore",
                 identity_class="organization",
             )
 
             # preparing the bundle to be sent to OpenCTI worker
+            bundle_objects = []
+            
             external_reference = stix2.ExternalReference(
                 source_name="Malcore database",
                 url="https://app.malcore.io/",
@@ -201,37 +202,41 @@ class Malcore:
             indicators = []
             malware_objects = []
             relationships = []
-            labels=['malcore', 'threat']
+            labels = ["threat"]
 
             # Filling the bundle
-            for item in data_json['data']['data']:
-                hash = item["hash"] 
-                score = item["score"] 
+            for item in data_json["data"]["data"]:
+                hash = item["hash"]
+                score = item["score"]
                 pattern = "[file:hashes.'SHA-256' = '" + hash + "']"
-                
+
                 stix_indicator = stix2.Indicator(
                     id=Indicator.generate_id(hash),
-                    name="Indicator: {}".format(hash),
+                    name="Indicator: {}".format(hash),  # The name may be to modify
                     description="Hash: {}".format(hash),
                     pattern_type="stix",
                     labels=labels,
                     pattern=pattern,
+                    created_by_ref=malcore_org_id,
                     external_references=[external_reference],
                     object_marking_refs=[stix2.TLP_WHITE],
-                ) 
-                indicators.append(stix_indicator) 
-                
+                    custom_properties={
+                        "x_opencti_main_observable_type": "StixFile",
+                    },
+                )
+                indicators.append(stix_indicator)
+
                 stix_malware = stix2.Malware(
                     id=Malware.generate_id(hash),
-                    name="Malware: {}".format(hash),
+                    name="Malware: {}".format(hash),  # The name may be to modify
                     description="Threat Tracked by Malcore",
                     is_family=True,
                     confidence=score,
-                    labels=labels,
+                    created_by_ref=malcore_org_id,
                     object_marking_refs=[stix2.TLP_WHITE],
                 )
-                malware_objects.append(stix_malware) 
-                
+                malware_objects.append(stix_malware)
+
                 relationship = stix2.Relationship(
                     id=StixCoreRelationship.generate_id(
                         "indicates", stix_indicator.id, stix_malware.id
@@ -240,36 +245,36 @@ class Malcore:
                     relationship_type="indicates",
                     target_ref=stix_malware.id,
                     confidence=score,
-                    labels=labels,
+                    created_by_ref=malcore_org_id,
                 )
                 relationships.append(relationship)
 
+            bundle_objects.append(identity)
+            bundle_objects.extend(indicators)
+            bundle_objects.extend(malware_objects)
+            bundle_objects.extend(relationships)
+
             # Creating the bundle from the list
-            bundle = stix2.Bundle(
-                objects=[identity] + indicators + malware_objects + relationships
-            ) 
+            bundle = stix2.Bundle(objects=bundle_objects, allow_custom=True)
             bundle_json = bundle.serialize()
-            
+
             # Sending the bundle
             self.helper.send_stix2_bundle(
                 bundle_json,
                 update=self.update_existing_data,
                 work_id=work_id,
             )
-            
-            message = "Threat successfully run, storing last_run as " + str(
-                timestamp
-            )
+
+            message = "Threat successfully run, storing last_run as " + str(timestamp)
             self.helper.log_info(message)
             self.helper.set_state({"last_run": timestamp})
             self.helper.api.work.to_processed(work_id, message)
-            
+
         except Exception as e:
-            self.helper.log_error(str(e))
-           
-           
+            self.helper.log_error("THREAT::"+str(e))
+
     def run_feed_hash(self, timestamp):
-        try:     
+        try:
             now = datetime.utcfromtimestamp(timestamp)
             friendly_name = "Malcore connector hash run @ " + now.strftime(
                 "%Y-%m-%d %H:%M:%S"
@@ -277,12 +282,12 @@ class Malcore:
             work_id = self.helper.api.work.initiate_work(
                 self.helper.connect_id, friendly_name
             )
-                   
-            feed_type = "hash" 
+
+            feed_type = "hash"
             req = urllib.request.Request(self.api_url)
             req.add_header("apikey", self.api_key)
-            req.add_header("User-Agent", "Malcore/OpenCTI")
             req.add_header("Accept", "application/json")
+            req.add_header("User-Agent", "Malcore/OpenCTI")
             req.method = "POST"
             body = parse.urlencode(
                 {
@@ -298,51 +303,62 @@ class Malcore:
             feed = response.read()
             data_json = json.loads(feed)
 
-            # preparing the bundle to be sent to OpenCTI worker
+            # Preparing the bundle to be sent to OpenCTI worker
+            bundle_objects = []
+            
+            malcore_org_id = Identity.generate_id("Malcore", "organization")
+            identity = stix2.Identity(
+                id=malcore_org_id,
+                name="Malcore",
+                identity_class="organization",
+            )
+
             external_reference = stix2.ExternalReference(
                 source_name="Malcore database",
                 url="https://app.malcore.io/",
                 description="Malcore app URL",
             )
-            bundle_objects = []
+            indicators = []
 
             # Filling the bundle
-            for item in data_json['data']['data']:
-                hash = item["hash"] 
+            for item in data_json["data"]["data"]:
+                hash = item["hash"]
                 pattern = "[file:hashes.'SHA-256' = '" + hash + "']"
-                
+
                 stix_indicator = stix2.Indicator(
                     id=Indicator.generate_id(hash),
                     pattern_type="stix",
-                    labels=['malcore', 'hash'],
                     pattern=pattern,
+                    created_by_ref=malcore_org_id,
                     external_references=[external_reference],
                     object_marking_refs=[stix2.TLP_WHITE],
-                ) 
-                bundle_objects.append(stix_indicator) 
+                    custom_properties={
+                        "x_opencti_main_observable_type": "StixFile",
+                    },
+                )
+                indicators.append(stix_indicator)
 
+            bundle_objects.append(identity)
+            bundle_objects.extend(indicators)
             # Creating the bundle from the list
-            bundle = stix2.Bundle(bundle_objects, allow_custom=True)
+            bundle = stix2.Bundle(objects=bundle_objects, allow_custom=True)
             bundle_json = bundle.serialize()
-            
+
             # Sending the bundle
             self.helper.send_stix2_bundle(
                 bundle_json,
                 update=self.update_existing_data,
                 work_id=work_id,
             )
-            
-            message = "Hash successfully run, storing last_run as " + str(
-                timestamp
-            )
+
+            message = "Hash successfully run, storing last_run as " + str(timestamp)
             self.helper.log_info(message)
             self.helper.set_state({"last_run": timestamp})
             self.helper.api.work.to_processed(work_id, message)
-            
+
         except Exception as e:
-            self.helper.log_error(str(e))
-            
-        
+            self.helper.log_error("HASH::"+str(e))
+
     def run(self):
         while True:
             try:
@@ -361,27 +377,27 @@ class Malcore:
                     last_run = None
                     self.helper.log_info("Connector has never run")
 
-                # If the last_run is more than interval-1 day
+                # If the last_run is more than interval hour
                 if last_run is None or (
-                    (timestamp - last_run) > ((int(self.interval) - 1) * 60 * 60 * 24)
+                    (timestamp - last_run) > (int(self.interval) * 60 * 60)
                 ):
                     # Initiate the run
-                    self.helper.log_info("Connector will run!")  
-                    
-                    # # Run for feed type ioc
+                    self.helper.log_info("Connector will run!")
+
+                    # Run for feed type ioc
                     self.run_feed_ioc(timestamp)
-                    
+
                     # Run for feed type threat
                     self.run_feed_threat(timestamp)
-                    
+
                     # Run for feed type hash
                     self.run_feed_hash(timestamp)
-                    
-                    # Store the current timestamp as a last run 
+
+                    # Store the current timestamp as a last run
                     self.helper.log_info(
                         "Last_run stored, next run in: "
-                        + str(round(self.get_interval() / 60 / 60 / 24, 2))
-                        + " days"
+                        + str(round(self.get_interval() / 60 / 60, 2))
+                        + " hours"
                     )
                     time.sleep(self.get_interval())
                 else:
@@ -389,14 +405,13 @@ class Malcore:
                     new_interval = self.get_interval() - (timestamp - last_run)
                     self.helper.log_info(
                         "Connector will not run, next run in: "
-                        + str(round(new_interval / 60 / 60 / 24, 2))
-                        + " days"
+                        + str(round(new_interval / 60 / 60, 2))
+                        + " hours"
                     )
-                    time.sleep(60)
+                    time.sleep(6000)
             except (KeyboardInterrupt, SystemExit):
                 self.helper.log_info("Connector stop")
                 exit(0)
             except Exception as e:
                 self.helper.log_error(str(e))
                 time.sleep(60)
-
